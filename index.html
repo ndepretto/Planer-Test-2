@@ -623,10 +623,17 @@
 
         async resetParentalConfirm(studentId) {
             if (confirm(`Möchten Sie die Elternbestätigung für ${studentId} wirklich zurücksetzen?`)) {
-                const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
-                await updateDoc(confRef, {
-                    [studentId]: deleteField()
-                });
+                try {
+                    const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
+                    // Wir löschen das Feld für den spezifischen Schüler aus dem Bestätigungs-Objekt
+                    await updateDoc(confRef, {
+                        [studentId]: deleteField()
+                    });
+                    // Da onSnapshot aktiv ist, wird das Dashboard automatisch neu geladen.
+                } catch (error) {
+                    console.error("Fehler beim Zurücksetzen der Bestätigung:", error);
+                    alert("Fehler beim Zurücksetzen.");
+                }
             }
         },
 
