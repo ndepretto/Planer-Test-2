@@ -24,6 +24,12 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        /* Smooth transitions for dashboard panels */
+        .collapsible-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
     </style>
 <script id="tailwind-config">
         tailwind.config = {
@@ -88,7 +94,7 @@
 <div class="hidden flex flex-col items-center justify-center py-20 no-print" id="login-view">
 <div class="bg-surface p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-outline-variant">
 <span class="material-symbols-outlined text-primary text-6xl mb-4">lock</span>
-<h2 class="text-2xl font-bold mb-2">Lehrer Login</h2>
+<h2 class="text-2xl font-bold mb-2 text-slate-800">Lehrer Login</h2>
 <p class="text-on-surface-variant text-sm mb-6">Bitte geben Sie Ihr Passwort ein.</p>
 <input class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 focus:ring-2 focus:ring-primary outline-none" id="login-password" onkeyup="if(event.key==='Enter') app.handleLogin()" placeholder="Passwort" type="password"/>
 <button class="w-full py-3 bg-primary text-white rounded-xl font-bold uppercase tracking-wider hover:bg-blue-700 transition-all" onclick="app.handleLogin()">Anmelden</button>
@@ -190,7 +196,7 @@
 <div class="hidden space-y-8" id="teacher-dashboard">
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 <h2 class="text-3xl font-black text-slate-900">Dashboard <span class="text-primary" id="teacher-current-class"></span></h2>
-<div class="flex gap-2">
+<div class="flex flex-wrap gap-2">
 <button class="px-4 py-2 border border-slate-200 bg-white rounded-lg text-xs font-bold uppercase text-slate-600 flex items-center gap-2 hover:bg-slate-50" onclick="app.printQRCodes()">
 <span class="material-symbols-outlined text-[18px]">qr_code_2</span> QR-Codes Eltern
                 </button>
@@ -265,7 +271,7 @@
 <!-- Left: Progress List -->
 <div class="lg:col-span-2 space-y-4">
 <div class="flex items-center justify-between">
-<h3 class="text-xl font-bold text-slate-800">Status der Schüler</h3>
+<h3 class="text-xl font-bold text-slate-800">Schülerfortschritt</h3>
 </div>
 <div class="bg-white border border-slate-200 rounded-[40px] overflow-hidden shadow-sm">
 <table class="w-full text-left text-sm">
@@ -283,7 +289,10 @@
 </table>
 </div>
 <div class="bg-white border border-slate-200 rounded-[40px] p-8 shadow-sm">
-<h3 class="text-lg font-bold mb-6 text-slate-800" id="task-list-header">Aufgabenliste</h3>
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-lg font-bold text-slate-800" id="task-list-header">Aufgabenliste</h3>
+<div class="flex gap-2" id="task-list-filters"></div>
+</div>
 <div class="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar" id="all-tasks-list">
 </div>
 </div>
@@ -292,10 +301,14 @@
 <div class="space-y-4 no-print">
 <h3 class="text-xl font-bold text-slate-800">Klassenverwaltung</h3>
 <div class="bg-white border border-slate-200 rounded-[40px] p-6 shadow-sm space-y-4">
-<textarea class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-1 focus:ring-primary min-h-[150px]" id="class-input" placeholder="Namen pro Zeile einfügen (txt/docx-Copy)..."></textarea>
+<div>
+<label class="block text-[10px] font-black uppercase text-slate-400 mb-2">Import (Namen pro Zeile)</label>
+<textarea class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-1 focus:ring-primary min-h-[150px]" id="class-input" placeholder="Anna Muster
+Max Beispiel..."></textarea>
+</div>
 <button class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm uppercase hover:bg-slate-900 transition-all" onclick="app.updateClassList()">Schüler hinzufügen</button>
 <div class="border-t border-slate-100 pt-4">
-<p class="text-[10px] text-slate-400 mb-2 uppercase font-bold">Klassenliste</p>
+<p class="text-[10px] text-slate-400 mb-2 uppercase font-bold">Aktuelle Klassenliste</p>
 <div class="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar" id="class-list-container">
 <!-- Students list -->
 </div>
@@ -314,7 +327,7 @@
 <!-- Print Only View for QR Codes -->
 <div class="hidden print-only p-8" id="print-qr-section">
 <h1 class="text-3xl font-black text-center mb-8">Eltern-Login QR-Codes (Klasse <span id="print-class-name"></span>)</h1>
-<div class="grid grid-cols-3 gap-8" id="print-qr-grid">
+<div class="grid grid-cols-2 gap-8" id="print-qr-grid">
 <!-- QR Codes for each student -->
 </div>
 </div>
@@ -322,7 +335,7 @@
 <div class="max-w-[1000px] mx-auto px-gutter flex flex-col md:flex-row justify-between items-center gap-6">
 <div class="text-center md:text-left">
 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">© 2024 Döltschi Aufgabenplaner</p>
-<p class="text-[9px] text-slate-300 font-mono mt-1 uppercase">Version 16.0 • Test Labor • Swiss Edition</p>
+<p class="text-[9px] text-slate-300 font-mono mt-1 uppercase">Ultimate Master Version • Test Labor • Swiss Edition</p>
 </div>
 <div class="flex gap-8">
 <a class="text-xs font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-widest" href="#">Datenschutz</a>
@@ -365,7 +378,7 @@
         students: [],
         tasks: [],
         parentalConfirmations: {},
-        currentRole: 'student', // student, login, teacher, student-tasks
+        currentRole: 'start', // login, teacher, student, student-tasks
         selectedStudent: localStorage.getItem('doeltschi_user') || null,
         currentClassName: localStorage.getItem('doeltschi_class') || null,
         selectedTeacherFilter: 'all',
@@ -377,6 +390,21 @@
             this.updateDateDisplay();
             this.renderLegend();
             
+            // Auto-login from URL params or LocalStorage
+            const params = new URLSearchParams(window.location.search);
+            const urlClass = params.get('class');
+            const urlUser = params.get('user');
+            
+            if (urlClass) {
+                this.currentClassName = urlClass;
+                localStorage.setItem('doeltschi_class', urlClass);
+            }
+
+            if (urlUser) {
+                this.selectedStudent = urlUser;
+                localStorage.setItem('doeltschi_user', urlUser);
+            }
+
             if (this.currentClassName) {
                 this.setupClassListeners(this.currentClassName);
                 if (this.selectedStudent) {
@@ -396,6 +424,7 @@
             if (this.unsubConfirm) this.unsubConfirm();
             if (this.unsubTasks) this.unsubTasks();
 
+            // Classlist
             this.unsubConfig = onSnapshot(doc(db, "classes", className, "config", "classlist"), (docSnap) => {
                 if (docSnap.exists()) {
                     this.students = (docSnap.data().names || []).sort();
@@ -405,11 +434,13 @@
                 this.render();
             });
 
+            // Confirmations
             this.unsubConfirm = onSnapshot(doc(db, "classes", className, "config", "confirmations"), (docSnap) => {
                 this.parentalConfirmations = docSnap.exists() ? docSnap.data() : {};
                 this.render();
             });
 
+            // Tasks
             const tasksQuery = query(collection(db, "classes", className, "tasks"), orderBy("createdAt", "desc"));
             this.unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
                 this.tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -471,15 +502,14 @@
                 } else {
                     this.currentRole = 'start';
                 }
-            } else if (role === 'teacher') {
-                this.currentRole = 'teacher';
             }
             this.render();
         },
 
         handleLogin() {
             if (document.getElementById('login-password').value === 'lehrer123') {
-                this.setRole('teacher');
+                this.currentRole = 'teacher';
+                this.render();
             } else {
                 alert('Falsches Passwort!');
             }
@@ -522,7 +552,7 @@
         },
 
         logoutStudent() {
-            if(confirm("Möchtest du dich abmelden?")) {
+            if(confirm("Abmelden? Dein Status bleibt gespeichert.")) {
                 localStorage.removeItem('doeltschi_user');
                 this.selectedStudent = null;
                 this.currentRole = 'student';
@@ -698,6 +728,7 @@
             const select = document.getElementById('new-task-student');
             select.innerHTML = `<option value="all">Ganze Klasse</option>` + this.students.map(s => `<option value="${s}">${s}</option>`).join('');
 
+            // Stats
             let totalPossible = 0, totalDone = 0;
             this.students.forEach(s => {
                 const sTasks = this.tasks.filter(t => t.who === 'all' || t.who === s);
@@ -712,6 +743,7 @@
             document.getElementById('confirmed-count').textContent = `${confirmedCount}/${this.students.length}`;
             document.getElementById('confirmed-pending-text').textContent = `${this.students.length - confirmedCount} ausstehend`;
 
+            // Progress Table
             const tbody = document.getElementById('teacher-student-table');
             tbody.innerHTML = this.students.map(name => {
                 const sTasks = this.tasks.filter(t => t.who === 'all' || t.who === name);
@@ -748,6 +780,7 @@
                 `;
             }).join('');
 
+            // Tasks List
             const taskContainer = document.getElementById('all-tasks-list');
             const filteredTasks = this.tasks.filter(t => this.selectedTeacherFilter === 'all' ? true : (t.who === 'all' || t.who === this.selectedTeacherFilter));
             document.getElementById('task-list-header').textContent = this.selectedTeacherFilter === 'all' ? 'Alle Aufgaben' : `Aufgaben für ${this.selectedTeacherFilter}`;
@@ -768,6 +801,7 @@
                 `;
             }).join('') : `<p class="text-center py-8 text-xs font-bold text-slate-400 uppercase">Keine Aufgaben in diesem Filter</p>`;
 
+            // Class list with removal
             const classListContainer = document.getElementById('class-list-container');
             classListContainer.innerHTML = this.students.map(name => `
                 <div class="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-all group">
@@ -801,8 +835,12 @@
 
         async updateClassList() {
             const input = document.getElementById('class-input').value;
+            // Split by newline or comma
             const newNames = input.split(/[\n,;]/).map(n => n.trim()).filter(n => n.length > 1);
-            if (newNames.length === 0) return;
+            if (newNames.length === 0) {
+                alert("Bitte Namen eingeben (ein Name pro Zeile).");
+                return;
+            }
             const updatedNames = [...new Set([...this.students, ...newNames])].sort();
             await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: updatedNames });
             document.getElementById('class-input').value = "";
@@ -812,6 +850,7 @@
             if (confirm(`Soll ${name} wirklich aus der Klasse entfernt werden?`)) {
                 const updatedNames = this.students.filter(n => n !== name);
                 await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: updatedNames });
+                // Cleanup their confirmation
                 await updateDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), { [name]: deleteField() });
             }
         },
@@ -825,11 +864,11 @@
         async deleteCurrentClass() {
             if (confirm("Möchten Sie wirklich die GESAMTE Klasse inklusive aller Aufgaben und Schüler löschen? Dies kann nicht rückgängig gemacht werden!")) {
                 const batch = writeBatch(db);
-                // Delete tasks
+                // 1. Tasks
                 const q = query(collection(db, "classes", this.currentClassName, "tasks"));
                 const snaps = await getDocs(q);
                 snaps.forEach(d => batch.delete(d.ref));
-                // Delete config
+                // 2. Config docs
                 batch.delete(doc(db, "classes", this.currentClassName, "config", "classlist"));
                 batch.delete(doc(db, "classes", this.currentClassName, "config", "confirmations"));
                 await batch.commit();
@@ -845,29 +884,31 @@
             
             this.students.forEach(name => {
                 const card = document.createElement('div');
-                card.className = "flex flex-col items-center p-6 border-2 border-slate-200 rounded-2xl text-center";
-                card.innerHTML = `<h3 class="font-black text-xl mb-4">${name}</h3><div id="qr-${name.replace(/\s+/g, '')}" class="mb-4"></div><p class="text-[10px] font-bold text-slate-400 uppercase">Eltern-Login Hausaufgaben</p>`;
+                card.className = "flex flex-col items-center p-8 border-2 border-slate-200 rounded-3xl text-center break-inside-avoid mb-8";
+                const cleanId = `qr-${name.replace(/\s+/g, '')}`;
+                card.innerHTML = `
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="material-symbols-outlined text-primary">school</span>
+                        <h3 class="font-black text-2xl">${name}</h3>
+                    </div>
+                    <div id="${cleanId}" class="mb-4 bg-white p-2"></div>
+                    <p class="text-[12px] font-bold text-slate-400 uppercase mb-1">Eltern-Login Hausaufgaben</p>
+                    <p class="text-[10px] text-slate-300 font-mono">ID: ${this.currentClassName} • ${name}</p>
+                `;
                 grid.appendChild(card);
                 
-                new QRCode(document.getElementById(`qr-${name.replace(/\s+/g, '')}`), {
+                new QRCode(document.getElementById(cleanId), {
                     text: window.location.origin + window.location.pathname + `?class=${this.currentClassName}&user=${name}`,
-                    width: 120,
-                    height: 120
+                    width: 140,
+                    height: 140,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff"
                 });
             });
 
             window.print();
         }
     };
-
-    // Auto-login from URL params
-    const params = new URLSearchParams(window.location.search);
-    const urlClass = params.get('class');
-    const urlUser = params.get('user');
-    if (urlClass) {
-        localStorage.setItem('doeltschi_class', urlClass);
-        if (urlUser) localStorage.setItem('doeltschi_user', urlUser);
-    }
 
     document.addEventListener('DOMContentLoaded', () => window.app.init());
 </script>
