@@ -617,9 +617,20 @@
                         status: 'OK',
                         parent: parentName,
                         date: dateStr + " " + timeStr,
-                        confirmedAt: dateStr // Store short date for table view
+                        confirmedAt: dateStr,
+                        parentalConfirm: true,
+                        parentalConfirmDate: dateStr + " " + timeStr
                     }
                 }, { merge: true });
+            }
+        },
+
+        async resetParentalConfirm(studentId) {
+            if (confirm(`Möchten Sie die Elternbestätigung für ${studentId} wirklich zurücksetzen?`)) {
+                const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
+                await updateDoc(confRef, {
+                    [studentId]: deleteField()
+                });
             }
         },
 
@@ -712,18 +723,24 @@
                         </td>
                         <td class="py-6 px-4 text-center">
                             <div class="flex justify-center gap-2">
-                                <button onclick="app.showQR('${name}', 'student')" class="p-2 rounded-full bg-surface-container hover:bg-primary/10 transition-all"><span class="material-symbols-outlined text-sm">person</span></button>
-                                <button onclick="app.showQR('${name}', 'parent')" class="p-2 rounded-full bg-surface-container hover:bg-secondary/10 transition-all"><span class="material-symbols-outlined text-sm">family_restroom</span></button>
+                                <button onclick="app.showQR('${name}', 'student')" class="p-2 rounded-full bg-surface-container hover:bg-primary/10 transition-all" title="Schüler QR"><span class="material-symbols-outlined text-sm">person</span></button>
+                                <button onclick="app.showQR('${name}', 'parent')" class="p-2 rounded-full bg-surface-container hover:bg-secondary/10 transition-all" title="Eltern QR"><span class="material-symbols-outlined text-sm">family_restroom</span></button>
                             </div>
                         </td>
                         <td class="py-6 px-4 text-center">
+                            <div class="flex flex-col items-center justify-center min-h-[40px]">
                             ${conf ? `
-                                <div class="flex flex-col items-center">
-                                    <span class="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">OK</span>
-                                    <span class="text-[9px] font-bold text-on-surface-variant mt-1">${conf.confirmedAt || conf.date?.split(' ')[0] || ''}</span>
-                                    <button onclick="app.unlockStudent('${name}')" class="text-[8px] text-error font-bold uppercase hover:underline mt-1 opacity-50 hover:opacity-100">Löschen</button>
+                                <div class="flex items-center gap-2">
+                                    <div class="flex flex-col items-center">
+                                        <span class="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">OK</span>
+                                        <span class="text-[9px] font-bold text-on-surface-variant mt-1">${conf.confirmedAt || conf.date?.split(' ')[0] || ''}</span>
+                                    </div>
+                                    <button onclick="app.resetParentalConfirm('${name}')" class="p-1.5 rounded-full hover:bg-error/10 text-error transition-all" title="Bestätigung zurücksetzen">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
                                 </div>
                             ` : '<span class="opacity-30 text-[10px] font-bold uppercase tracking-wider">Offen</span>'}
+                            </div>
                         </td>
                         <td class="py-6 px-4 text-right">
                             <div class="flex justify-end gap-2">
@@ -788,10 +805,8 @@
         },
 
         async unlockStudent(name) {
-            if (confirm(`${name} entsperren? Die Elternbestätigung wird gelöscht.`)) {
-                const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
-                await updateDoc(confRef, { [name]: deleteField() });
-            }
+            // Replaced by resetParentalConfirm for specific confirmation clearing
+            this.resetParentalConfirm(name);
         },
 
         async unlockAll() {
