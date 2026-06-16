@@ -97,7 +97,7 @@
 <button class="w-full py-4 bg-primary text-white rounded-full font-black text-lg hover:shadow-xl active:scale-95 transition-all" onclick="app.handleLogin()">Anmelden</button>
 </div>
 </div>
-<!-- Start Screen: Welcome / Open Class -->
+<!-- Start Screen -->
 <div class="hidden" id="start-view">
 <div class="max-w-xl mx-auto">
 <div class="bg-white p-12 rounded-lg shadow-2xl border border-surface-container relative overflow-hidden group">
@@ -174,7 +174,6 @@
 <div class="space-y-4" id="task-list"></div>
 <!-- Parental Confirmation Section -->
 <div class="mt-16 p-10 bg-white rounded-lg border-2 border-primary border-dashed shadow-xl transition-all relative overflow-hidden" id="parents-confirmation-card">
-<!-- Overlay for locked student view -->
 <div class="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 flex items-center justify-center text-center p-6 hidden" id="confirmation-overlay">
 <div class="max-w-md">
 <span class="material-symbols-outlined text-5xl text-primary mb-4">qr_code_scanner</span>
@@ -226,7 +225,7 @@
 <h3 class="text-2xl font-black mb-6 flex items-center gap-3 tracking-tight">
 <span class="material-symbols-outlined text-primary text-3xl">group</span> Klassenliste verwalten
                 </h3>
-<textarea class="w-full bg-surface-container-low border-2 border-surface-container-high rounded-lg p-6 min-h-[180px] mb-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-medium text-sm" id="class-input" placeholder="Ein Name pro Zeile (Vorname Nachname Klasse)..."></textarea>
+<textarea class="w-full bg-surface-container-low border-2 border-surface-container-high rounded-lg p-6 min-h-[180px] mb-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-medium text-sm" id="class-input" placeholder="Ein Name pro Zeile..."></textarea>
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 <button class="bg-primary text-on-primary font-black py-4 rounded-full hover:shadow-xl transition-all" onclick="app.updateClassList()">Speichern</button>
 <input accept=".docx" class="hidden" id="docx-import" onchange="app.handleDocxImport(event)" type="file"/>
@@ -310,7 +309,7 @@
 </div>
 </div>
 </main>
-<!-- QR Modal for Teacher -->
+<!-- QR Modal -->
 <div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md hidden" id="qr-modal">
 <div class="bg-white w-full max-w-sm rounded-lg shadow-2xl overflow-hidden relative">
 <button class="absolute top-4 right-4 text-outline hover:text-on-surface transition-colors" onclick="app.closeQRModal()">
@@ -404,12 +403,10 @@
                 this.currentClassName = urlClass.toUpperCase();
                 localStorage.setItem('lab_class', this.currentClassName);
             }
-
             if (urlUser) {
                 this.selectedStudent = urlUser;
                 localStorage.setItem('lab_user', urlUser);
             }
-
             if (urlRole === 'parent') {
                 this.isParentSession = true;
             }
@@ -464,9 +461,8 @@
             
             const first = now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1);
             const firstDay = new Date(new Date().setDate(first));
-            const lastDay = new Date(new Date().setDate(first + 4));
             const rangeEl = document.getElementById('current-date-range');
-            if (rangeEl) rangeEl.textContent = `${firstDay.toLocaleDateString('de-CH')} – ${lastDay.toLocaleDateString('de-CH')}`;
+            if (rangeEl) rangeEl.textContent = `${firstDay.toLocaleDateString('de-CH')} – ${new Date(new Date().setDate(first + 4)).toLocaleDateString('de-CH')}`;
         },
 
         renderLegends() {
@@ -541,7 +537,7 @@
             if (this.currentRole !== 'teacher') return;
             if (confirm("Möchten Sie die gespeicherte Schülersitzung auf diesem Gerät wirklich zurücksetzen?")) {
                 localStorage.removeItem('lab_user');
-                alert("Sitzung wurde zurückgesetzt. Der nächste Schüler muss sich neu auswählen.");
+                alert("Sitzung wurde zurückgesetzt.");
             }
         },
 
@@ -618,8 +614,8 @@
                         parent: parentName,
                         date: dateStr + " " + timeStr,
                         confirmedAt: dateStr,
-                        parentalConfirm: true,
-                        parentalConfirmDate: dateStr + " " + timeStr
+                        parentalConfirmation: parentName,
+                        confirmationDate: dateStr + " " + timeStr
                     }
                 }, { merge: true });
             }
@@ -666,8 +662,7 @@
                             <div class="text-[11px] font-black text-primary uppercase tracking-widest bg-surface-container-low px-4 py-2 rounded-full border border-surface-container shadow-sm">
                                 Bis ${t.date ? t.date.split('-').reverse().join('.') : '-'}
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
             }
 
@@ -682,7 +677,8 @@
                 form.classList.add('hidden');
                 desc.classList.add('hidden');
                 box.classList.remove('hidden');
-                box.innerHTML = `<div class="flex items-center justify-center gap-4 text-primary"><span class="material-symbols-outlined text-3xl">verified</span> <div><div class="text-xs uppercase tracking-widest opacity-60">Plan durch Eltern gesperrt</div><div class="text-xl">Bestätigt durch ${this.parentalConfirmations[name].parent}</div><div class="text-[10px] opacity-50">${this.parentalConfirmations[name].date}</div></div></div>`;
+                const confData = this.parentalConfirmations[name];
+                box.innerHTML = `<div class="flex items-center justify-center gap-4 text-primary"><span class="material-symbols-outlined text-3xl">verified</span> <div><div class="text-xs uppercase tracking-widest opacity-60">Plan durch Eltern gesperrt</div><div class="text-xl">Bestätigt durch ${confData.parentalConfirmation || confData.parent}</div><div class="text-[10px] opacity-50">${confData.confirmationDate || confData.date}</div></div></div>`;
             } else {
                 box.classList.add('hidden');
                 if (this.isParentSession) {
@@ -747,8 +743,7 @@
                                 <button onclick="app.removeStudent('${name}')" class="text-outline-variant hover:text-error transition-all"><span class="material-symbols-outlined text-lg">person_remove</span></button>
                             </div>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             }).join('');
 
             const allTasksList = document.getElementById('all-tasks-list');
@@ -764,8 +759,7 @@
                             <span class="inline-block bg-white px-3 py-1 rounded-full border border-surface-container text-[10px] font-bold text-primary">Bis ${t.date ? t.date.split('-').reverse().join('.') : '-'}</span>
                         </div>
                         <button onclick="app.deleteTask('${t.id}')" class="opacity-0 group-hover:opacity-100 text-outline-variant hover:text-error transition-all p-2"><span class="material-symbols-outlined">delete</span></button>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
         },
 
@@ -797,20 +791,15 @@
 
         async updateClassList() {
             const raw = document.getElementById('class-input').value;
-            const names = raw.split('\n')
-                .map(n => n.trim())
-                .filter(n => n.length > 1);
+            const names = raw.split('\n').map(n => n.trim()).filter(n => n.length > 1);
             await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: [...new Set(names)].sort() });
             alert("Gespeichert.");
         },
 
-        async unlockStudent(name) {
-            // Replaced by resetParentalConfirm for specific confirmation clearing
-            this.resetParentalConfirm(name);
-        },
-
         async unlockAll() {
-            if (confirm("Alle Pläne entsperren?")) await setDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), {});
+            if (confirm("Alle Pläne entsperren?")) {
+                await setDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), {});
+            }
         },
 
         async removeStudent(name) {
@@ -841,7 +830,6 @@
                     const res = await mammoth.extractRawText({ arrayBuffer: e.target.result });
                     const lines = res.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     const processedNames = [];
-                    
                     let tempEntry = [];
                     lines.forEach(line => {
                         tempEntry.push(line);
@@ -850,14 +838,9 @@
                             tempEntry = [];
                         }
                     });
-                    
-                    if (processedNames.length === 0) {
-                        lines.forEach(l => processedNames.push(l));
-                    }
-
+                    if (processedNames.length === 0) lines.forEach(l => processedNames.push(l));
                     document.getElementById('class-input').value = processedNames.join('\n');
                 } catch (err) {
-                    console.error("Docx Error:", err);
                     alert("Fehler beim Lesen der Datei.");
                 }
             };
@@ -899,8 +882,7 @@
                     <div class="flex items-center gap-3 mb-6"><h3 class="font-black text-xl text-slate-800 tracking-tight leading-tight">${name}</h3></div>
                     <div id="${cleanId}" class="mb-6 bg-white p-4 shadow-sm border border-slate-50 rounded-lg"></div>
                     <p class="text-[14px] font-black text-primary uppercase tracking-widest">Eltern-Login</p>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Scan zum Bestätigen</p>
-                `;
+                    <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Scan zum Bestätigen</p>`;
                 grid.appendChild(div);
                 new QRCode(document.getElementById(cleanId), {
                     text: window.location.origin + window.location.pathname + `?class=${this.currentClassName}&user=${name}&role=parent`,
