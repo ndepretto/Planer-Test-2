@@ -608,11 +608,16 @@
             if (!parentName) return alert("Bitte Namen eingeben.");
             if (confirm(`Bestätigen Sie als ${parentName}? Danach ist keine Änderung mehr möglich.`)) {
                 const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('de-CH');
+                const timeStr = now.toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'});
+                
                 await setDoc(confRef, {
                     [name]: {
                         status: 'OK',
                         parent: parentName,
-                        date: new Date().toLocaleDateString('de-CH') + " " + new Date().toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'})
+                        date: dateStr + " " + timeStr,
+                        confirmedAt: dateStr // Store short date for table view
                     }
                 }, { merge: true });
             }
@@ -713,11 +718,12 @@
                         </td>
                         <td class="py-6 px-4 text-center">
                             ${conf ? `
-                                <div class="flex flex-col items-center gap-1">
-                                    <span class="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">Gesperrt</span>
-                                    <button onclick="app.unlockStudent('${name}')" class="text-[9px] text-error font-bold uppercase hover:underline">Entsperren</button>
+                                <div class="flex flex-col items-center">
+                                    <span class="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">OK</span>
+                                    <span class="text-[9px] font-bold text-on-surface-variant mt-1">${conf.confirmedAt || conf.date?.split(' ')[0] || ''}</span>
+                                    <button onclick="app.unlockStudent('${name}')" class="text-[8px] text-error font-bold uppercase hover:underline mt-1 opacity-50 hover:opacity-100">Löschen</button>
                                 </div>
-                            ` : '<span class="opacity-30 text-[10px] font-bold uppercase">Offen</span>'}
+                            ` : '<span class="opacity-30 text-[10px] font-bold uppercase tracking-wider">Offen</span>'}
                         </td>
                         <td class="py-6 px-4 text-right">
                             <div class="flex justify-end gap-2">
