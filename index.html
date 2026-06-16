@@ -67,7 +67,7 @@
 <div class="flex items-center gap-3">
 <h1 class="text-3xl font-black tracking-tighter text-primary cursor-pointer" onclick="app.resetToHome()">Döltschi</h1>
 <div class="flex items-center gap-2">
-<span class="px-2 py-0.5 bg-amber-100 border border-amber-200 text-amber-700 text-[10px] font-black uppercase rounded shadow-sm">Test-Umgebung</span>
+<span class="px-3 py-1 bg-amber-400 text-amber-950 text-[11px] font-black uppercase rounded-lg shadow-sm border border-amber-500">Test-Umgebung</span>
 <div class="hidden md:flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-[10px] font-bold uppercase text-primary">
 <span class="material-symbols-outlined text-[14px]">cloud_done</span>
 <span>Cloud aktiv</span>
@@ -96,13 +96,31 @@
 <button class="w-full py-3 bg-primary text-white rounded-xl font-bold uppercase tracking-wider hover:bg-blue-700 transition-all" onclick="app.handleLogin()">Anmelden</button>
 </div>
 </div>
-<!-- Student Select View -->
+<!-- Test Lab Welcome View -->
 <div class="hidden flex flex-col items-center py-12" id="student-select-view">
-<div class="text-center space-y-4 mb-12">
-<h2 class="text-5xl font-black text-slate-900 tracking-tight">Wer bist du?</h2>
-<p class="text-slate-500 font-medium text-lg">Wähle deinen Namen aus, um deine Aufgaben zu sehen.</p>
+<div class="flex flex-col items-center text-center space-y-6 mb-12">
+<div class="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-5xl">science</span>
 </div>
-<div class="w-full max-w-md mx-auto mb-20 space-y-6" id="student-selection-container">
+<h2 class="text-5xl font-black text-slate-900 tracking-tight">Willkommen im Test-Labor</h2>
+<p class="text-slate-500 font-medium text-lg max-w-lg">Geben Sie den Namen Ihrer Klasse ein, um auf den digitalen Aufgabenplaner zuzugreifen.</p>
+</div>
+<!-- Class Entry Section -->
+<div class="w-full max-w-md mx-auto mb-12 space-y-6" id="class-entry-section">
+<div class="bg-white p-8 rounded-[40px] border border-slate-200 shadow-xl space-y-4">
+<h3 class="text-xs font-black uppercase tracking-widest text-slate-400 px-2">Klasse wählen</h3>
+<div class="space-y-4">
+<input class="w-full h-16 px-6 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xl font-bold text-slate-700 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" id="class-name-input" placeholder="z.B. B4b" type="text"/>
+<button class="w-full h-16 bg-primary text-white rounded-2xl text-lg font-bold uppercase tracking-widest hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all active:translate-y-0" onclick="app.openClass()">Klasse öffnen</button>
+</div>
+</div>
+</div>
+<!-- Name Selection (Hidden initially) -->
+<div class="hidden w-full max-w-md mx-auto mb-20 space-y-6" id="student-selection-container">
+<div class="text-center mb-6">
+<h3 class="text-2xl font-black text-slate-900">Wer bist du?</h3>
+<p class="text-slate-400 text-sm">Wähle deinen Namen aus der Liste der Klasse <span class="text-primary font-bold" id="current-class-display">...</span></p>
+</div>
 <div class="relative group">
 <select class="w-full h-16 px-6 bg-white border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-700 shadow-sm appearance-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer outline-none" id="student-dropdown" onchange="if(this.value) app.selectStudent(this.value)">
 <option disabled="" selected="" value="">Wähle deinen Namen...</option>
@@ -111,11 +129,7 @@
 <span class="material-symbols-outlined text-3xl">expand_more</span>
 </div>
 </div>
-</div>
-<div class="bg-white p-12 rounded-[48px] border-2 border-slate-100 shadow-2xl flex flex-col items-center max-w-sm mx-auto text-center">
-<h3 class="text-2xl font-bold mb-4">QR-Code scannen</h3>
-<div class="bg-white p-4 rounded-2xl mb-4 border border-slate-100" id="qrcode-home"></div>
-<p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Einmal scannen, immer aktuell.</p>
+<button class="w-full text-xs font-bold text-slate-400 uppercase hover:text-primary transition-colors" onclick="app.showClassEntry()">Andere Klasse wählen</button>
 </div>
 </div>
 <!-- Student Personal View (Planer View) -->
@@ -347,17 +361,15 @@
         currentRole: 'student',
         selectedStudent: null,
         selectedTeacherFilter: 'all',
-        qrHome: null,
+        currentClassName: localStorage.getItem('doeltschi_class') || null,
 
         async init() {
-            // Identity Protection: Load from localStorage
             const savedUser = localStorage.getItem('doeltschi_user');
 
             onSnapshot(doc(db, "config", "classlist"), (docSnap) => {
                 if (docSnap.exists()) {
                     this.students = docSnap.data().names || [];
                     
-                    // Auto-login if user was previously selected
                     if (savedUser && this.students.includes(savedUser) && this.currentRole === 'student') {
                         this.selectStudent(savedUser);
                     }
@@ -421,9 +433,26 @@
             this.setRole('student');
         },
 
+        openClass() {
+            const name = document.getElementById('class-name-input').value.trim();
+            if (!name) {
+                alert("Bitte gib einen Klassennamen ein!");
+                return;
+            }
+            this.currentClassName = name;
+            localStorage.setItem('doeltschi_class', name);
+            this.render();
+        },
+
+        showClassEntry() {
+            this.currentClassName = null;
+            localStorage.removeItem('doeltschi_class');
+            this.render();
+        },
+
         selectStudent(name) {
             this.selectedStudent = name;
-            localStorage.setItem('doeltschi_user', name); // Identity Protection Persistence
+            localStorage.setItem('doeltschi_user', name);
             this.currentRole = 'student-tasks';
             this.render();
         },
@@ -454,8 +483,19 @@
                 document.getElementById('login-view').classList.remove('hidden');
             } else if (this.currentRole === 'student') {
                 document.getElementById('student-select-view').classList.remove('hidden');
-                this.renderStudentDropdown();
-                this.generateHomeQR();
+                
+                const entry = document.getElementById('class-entry-section');
+                const selector = document.getElementById('student-selection-container');
+                
+                if (this.currentClassName) {
+                    entry.classList.add('hidden');
+                    selector.classList.remove('hidden');
+                    document.getElementById('current-class-display').textContent = this.currentClassName;
+                    this.renderStudentDropdown();
+                } else {
+                    entry.classList.remove('hidden');
+                    selector.classList.add('hidden');
+                }
             } else if (this.currentRole === 'student-tasks') {
                 document.getElementById('student-tasks-view').classList.remove('hidden');
                 this.renderStudentTasks();
@@ -474,20 +514,7 @@
             dropdown.value = ""; 
         },
 
-        generateHomeQR() {
-            const container = document.getElementById('qrcode-home');
-            if (!container || this.qrHome) return; 
-            container.innerHTML = "";
-            this.qrHome = new QRCode(container, {
-                text: window.location.href,
-                width: 200, height: 200,
-                colorDark : "#0058bc", colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
-            });
-        },
-
         async setTaskStatus(taskId, statusValue) {
-            // Parental Lock check
             if (this.parentalConfirmations[this.selectedStudent]?.status === 'OK') {
                 alert("Bestätigte Aufgaben sind gesperrt und können nicht mehr geändert werden.");
                 this.renderStudentTasks();
