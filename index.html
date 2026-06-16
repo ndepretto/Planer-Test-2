@@ -163,7 +163,7 @@
 <span class="text-4xl tracking-tighter" id="display-student-name">...</span>
 </div>
 <div class="hidden flex items-center gap-2 bg-error-container text-on-error-container px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-sm animate-pulse border border-error/20" id="lock-indicator">
-<span class="material-symbols-outlined text-sm">lock</span> Plan gesperrt
+<span class="material-symbols-outlined text-sm">lock</span> GESPERRT
                 </div>
 </div>
 <div class="md:text-right">
@@ -173,7 +173,15 @@
 </div>
 <div class="space-y-4" id="task-list"></div>
 <!-- Parental Confirmation Section -->
-<div class="mt-16 p-10 bg-white rounded-lg border-2 border-primary border-dashed shadow-xl transition-all" id="parents-confirmation-card">
+<div class="mt-16 p-10 bg-white rounded-lg border-2 border-primary border-dashed shadow-xl transition-all relative overflow-hidden" id="parents-confirmation-card">
+<!-- Overlay for locked student view -->
+<div class="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 flex items-center justify-center text-center p-6 hidden" id="confirmation-overlay">
+<div class="max-w-md">
+<span class="material-symbols-outlined text-5xl text-primary mb-4">qr_code_scanner</span>
+<h4 class="text-xl font-black text-primary mb-2 uppercase tracking-tight">Sicherheits-Sperre</h4>
+<p class="text-on-surface font-bold">Diese Bestätigung kann nur über den persönlichen Eltern-QR-Code deiner Lehrperson vorgenommen werden.</p>
+</div>
+</div>
 <div class="flex flex-col md:flex-row items-center justify-between gap-8">
 <div class="text-center md:text-left">
 <h3 class="text-2xl font-black text-primary mb-2 flex items-center justify-center md:justify-start gap-3">
@@ -184,7 +192,7 @@
 </div>
 <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto" id="confirmation-form">
 <input class="bg-surface-container-low border-2 border-surface-container rounded-full px-6 py-4 outline-none focus:border-primary transition-all font-bold placeholder:text-outline-variant min-w-[240px]" id="parent-name-input" placeholder="Vorname Nachname" type="text"/>
-<button class="bg-primary text-on-primary font-black py-4 px-8 rounded-full hover:shadow-lg active:scale-95 transition-all" id="confirm-btn" onclick="app.confirmByParent()">Bestätigen</button>
+<button class="bg-primary text-on-primary font-black py-4 px-8 rounded-full hover:shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale" id="confirm-btn" onclick="app.confirmByParent()">Bestätigen</button>
 </div>
 </div>
 <div class="hidden text-primary font-black bg-primary/5 p-6 rounded-lg text-center border border-primary/20 mt-6" id="confirmation-status-box"></div>
@@ -377,6 +385,7 @@
         currentRole: 'start', 
         selectedStudent: localStorage.getItem('lab_user') || null,
         currentClassName: localStorage.getItem('lab_class') || null,
+        isParentSession: false,
         unsubConfig: null,
         unsubConfirm: null,
         unsubTasks: null,
@@ -389,6 +398,7 @@
             const params = new URLSearchParams(window.location.search);
             const urlClass = params.get('class');
             const urlUser = params.get('user');
+            const urlRole = params.get('role');
             
             if (urlClass) {
                 this.currentClassName = urlClass.toUpperCase();
@@ -400,9 +410,12 @@
                 localStorage.setItem('lab_user', urlUser);
             }
 
+            if (urlRole === 'parent') {
+                this.isParentSession = true;
+            }
+
             if (this.currentClassName) {
                 this.setupClassListeners(this.currentClassName);
-                // Student Identity Protection: If a student is already locked in, go directly to their view
                 this.currentRole = this.selectedStudent ? 'student-tasks' : 'student';
             } else {
                 this.currentRole = 'start';
@@ -519,13 +532,12 @@
 
         selectStudent(name) {
             this.selectedStudent = name;
-            localStorage.setItem('lab_user', name); // Identity Protection: Save selection
+            localStorage.setItem('lab_user', name);
             this.currentRole = 'student-tasks';
             this.render();
         },
 
         resetStudentSession() {
-            // Only teacher can reset student sessions
             if (this.currentRole !== 'teacher') return;
             if (confirm("Möchten Sie die gespeicherte Schülersitzung auf diesem Gerät wirklich zurücksetzen?")) {
                 localStorage.removeItem('lab_user');
@@ -584,13 +596,13 @@
 
         async setTaskStatus(taskId, isChecked) {
             const name = this.selectedStudent;
-            // Parental Confirmation Lock: Read-only if confirmed
             if (this.parentalConfirmations[name]?.status === 'OK') return;
             const taskRef = doc(db, "classes", this.currentClassName, "tasks", taskId);
             await updateDoc(taskRef, { done: isChecked ? arrayUnion(name) : arrayRemove(name) });
         },
 
         async confirmByParent() {
+            if (!this.isParentSession) return;
             const name = this.selectedStudent;
             const parentName = document.getElementById('parent-name-input').value.trim();
             if (!parentName) return alert("Bitte Namen eingeben.");
@@ -612,8 +624,6 @@
             const isConfirmed = this.parentalConfirmations[name]?.status === 'OK';
             const lockInd = document.getElementById('lock-indicator');
             
-            // Parental Confirmation Lock: Show "GESPERRT" badge
-            lockInd.innerHTML = `<span class="material-symbols-outlined text-sm">lock</span> GESPERRT`;
             lockInd.classList.toggle('hidden', !isConfirmed);
 
             const myTasks = this.tasks.filter(t => t.who === 'all' || t.who === name);
@@ -649,17 +659,27 @@
             const form = document.getElementById('confirmation-form');
             const desc = document.getElementById('confirmation-description');
             const confirmBtn = document.getElementById('confirm-btn');
+            const overlay = document.getElementById('confirmation-overlay');
             
             if (isConfirmed) {
+                overlay.classList.add('hidden');
                 form.classList.add('hidden');
                 desc.classList.add('hidden');
                 box.classList.remove('hidden');
                 box.innerHTML = `<div class="flex items-center justify-center gap-4 text-primary"><span class="material-symbols-outlined text-3xl">verified</span> <div><div class="text-xs uppercase tracking-widest opacity-60">Plan durch Eltern gesperrt</div><div class="text-xl">Bestätigt durch ${this.parentalConfirmations[name].parent}</div><div class="text-[10px] opacity-50">${this.parentalConfirmations[name].date}</div></div></div>`;
             } else {
-                form.classList.remove('hidden');
-                desc.classList.remove('hidden');
                 box.classList.add('hidden');
-                if (confirmBtn) confirmBtn.disabled = false;
+                if (this.isParentSession) {
+                    overlay.classList.add('hidden');
+                    form.classList.remove('hidden');
+                    desc.classList.remove('hidden');
+                    confirmBtn.disabled = false;
+                } else {
+                    overlay.classList.remove('hidden');
+                    form.classList.remove('hidden');
+                    desc.classList.remove('hidden');
+                    confirmBtn.disabled = true;
+                }
             }
         },
 
@@ -762,7 +782,6 @@
         },
 
         async unlockStudent(name) {
-            // Parental Confirmation Lock: Unlock/Reset button for teacher
             if (confirm(`${name} entsperren? Die Elternbestätigung wird gelöscht.`)) {
                 const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
                 await updateDoc(confRef, { [name]: deleteField() });
