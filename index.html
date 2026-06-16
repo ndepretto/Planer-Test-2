@@ -159,10 +159,9 @@
 <div class="hidden space-y-12" id="student-tasks-view">
 <div class="flex flex-col md:flex-row justify-between items-end gap-6 no-print">
 <div class="flex flex-col gap-2">
-<button class="flex items-center gap-2 text-primary font-black hover:bg-surface-container px-4 py-2 rounded-full w-fit transition-all" onclick="app.logoutStudent()">
-<span class="material-symbols-outlined font-black">arrow_back</span>
+<div class="flex items-center gap-2 text-primary font-black px-4 py-2 rounded-full w-fit">
 <span class="text-4xl tracking-tighter" id="display-student-name">...</span>
-</button>
+</div>
 <div class="hidden flex items-center gap-2 bg-error-container text-on-error-container px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-sm animate-pulse border border-error/20" id="lock-indicator">
 <span class="material-symbols-outlined text-sm">lock</span> Plan gesperrt
                 </div>
@@ -202,6 +201,9 @@
 <div class="flex flex-col md:flex-row justify-between items-center gap-6">
 <h2 class="text-5xl font-black tracking-tighter">Dashboard <span class="text-primary text-2xl align-middle" id="teacher-current-class"></span></h2>
 <div class="flex flex-wrap gap-3">
+<button class="px-6 py-3 bg-on-surface text-white font-black rounded-full hover:shadow-lg transition-all flex items-center gap-2 text-sm shadow-sm" onclick="app.resetStudentSession()">
+<span class="material-symbols-outlined text-[18px]">no_accounts</span> Sitzungssperre aufheben
+                </button>
 <button class="px-6 py-3 bg-error text-on-error font-black rounded-full hover:bg-red-700 transition-all flex items-center gap-2 text-sm shadow-sm" onclick="app.deleteCurrentClass()">
 <span class="material-symbols-outlined text-[18px]">delete_forever</span> Klasse löschen
                 </button>
@@ -400,6 +402,7 @@
 
             if (this.currentClassName) {
                 this.setupClassListeners(this.currentClassName);
+                // Student Identity Protection: If a student is already locked in, go directly to their view
                 this.currentRole = this.selectedStudent ? 'student-tasks' : 'student';
             } else {
                 this.currentRole = 'start';
@@ -469,9 +472,7 @@
                 this.currentRole = 'login';
             } else if (role === 'student') {
                 if (this.currentClassName) {
-                    this.currentRole = 'student';
-                    this.selectedStudent = null;
-                    localStorage.removeItem('lab_user');
+                    this.currentRole = this.selectedStudent ? 'student-tasks' : 'student';
                 } else {
                     this.currentRole = 'start';
                 }
@@ -489,12 +490,14 @@
         },
 
         resetToHome() {
-            this.currentClassName = null;
-            this.selectedStudent = null;
-            localStorage.removeItem('lab_class');
-            localStorage.removeItem('lab_user');
-            this.currentRole = 'start';
-            this.render();
+            if (this.currentRole === 'teacher' || !this.selectedStudent) {
+                this.currentClassName = null;
+                this.selectedStudent = null;
+                localStorage.removeItem('lab_class');
+                localStorage.removeItem('lab_user');
+                this.currentRole = 'start';
+                this.render();
+            }
         },
 
         openClass() {
@@ -516,16 +519,18 @@
 
         selectStudent(name) {
             this.selectedStudent = name;
-            localStorage.setItem('lab_user', name);
+            localStorage.setItem('lab_user', name); // Identity Protection: Save selection
             this.currentRole = 'student-tasks';
             this.render();
         },
 
-        logoutStudent() {
-            localStorage.removeItem('lab_user');
-            this.selectedStudent = null;
-            this.currentRole = 'student';
-            this.render();
+        resetStudentSession() {
+            // Only teacher can reset student sessions
+            if (this.currentRole !== 'teacher') return;
+            if (confirm("Möchten Sie die gespeicherte Schülersitzung auf diesem Gerät wirklich zurücksetzen?")) {
+                localStorage.removeItem('lab_user');
+                alert("Sitzung wurde zurückgesetzt. Der nächste Schüler muss sich neu auswählen.");
+            }
         },
 
         render() {
@@ -571,6 +576,7 @@
 
         generateStudentMainQR() {
             const el = document.getElementById('student-main-qr');
+            if (!el) return;
             el.innerHTML = "";
             const url = window.location.origin + window.location.pathname + `?class=${this.currentClassName}`;
             new QRCode(el, { text: url, width: 140, height: 140 });
@@ -578,6 +584,7 @@
 
         async setTaskStatus(taskId, isChecked) {
             const name = this.selectedStudent;
+            // Parental Confirmation Lock: Read-only if confirmed
             if (this.parentalConfirmations[name]?.status === 'OK') return;
             const taskRef = doc(db, "classes", this.currentClassName, "tasks", taskId);
             await updateDoc(taskRef, { done: isChecked ? arrayUnion(name) : arrayRemove(name) });
@@ -587,7 +594,7 @@
             const name = this.selectedStudent;
             const parentName = document.getElementById('parent-name-input').value.trim();
             if (!parentName) return alert("Bitte Namen eingeben.");
-            if (confirm(`Bestätigen Sie als ${parentName}?`)) {
+            if (confirm(`Bestätigen Sie als ${parentName}? Danach ist keine Änderung mehr möglich.`)) {
                 const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
                 await setDoc(confRef, {
                     [name]: {
@@ -604,6 +611,9 @@
             document.getElementById('display-student-name').textContent = name;
             const isConfirmed = this.parentalConfirmations[name]?.status === 'OK';
             const lockInd = document.getElementById('lock-indicator');
+            
+            // Parental Confirmation Lock: Show "GESPERRT" badge
+            lockInd.innerHTML = `<span class="material-symbols-outlined text-sm">lock</span> GESPERRT`;
             lockInd.classList.toggle('hidden', !isConfirmed);
 
             const myTasks = this.tasks.filter(t => t.who === 'all' || t.who === name);
@@ -616,7 +626,7 @@
                     const isDone = t.done && t.done.includes(name);
                     const sub = SUBJECTS[t.subject] || { name: t.subject, color: '#64748b' };
                     return `
-                        <div class="bg-white p-8 rounded-lg border border-surface-container flex items-center justify-between shadow-md hover:shadow-xl transition-all ${isConfirmed ? 'opacity-70' : ''}">
+                        <div class="bg-white p-8 rounded-lg border border-surface-container flex items-center justify-between shadow-md hover:shadow-xl transition-all ${isConfirmed ? 'opacity-80 grayscale-[0.5]' : ''}">
                             <div class="flex items-center gap-6">
                                 <input type="checkbox" ${isDone ? 'checked' : ''} ${isConfirmed ? 'disabled' : ''} onchange="app.setTaskStatus('${t.id}', this.checked)" class="w-8 h-8 rounded-lg border-2 border-primary/30 text-primary focus:ring-4 focus:ring-primary-container/20 transition-all cursor-pointer">
                                 <div>
@@ -638,15 +648,18 @@
             const box = document.getElementById('confirmation-status-box');
             const form = document.getElementById('confirmation-form');
             const desc = document.getElementById('confirmation-description');
+            const confirmBtn = document.getElementById('confirm-btn');
+            
             if (isConfirmed) {
                 form.classList.add('hidden');
                 desc.classList.add('hidden');
                 box.classList.remove('hidden');
-                box.innerHTML = `<div class="flex items-center justify-center gap-4"><span class="material-symbols-outlined text-3xl">verified</span> <div><div class="text-xs uppercase tracking-widest opacity-60">Bestätigt durch</div><div class="text-xl">${this.parentalConfirmations[name].parent} am ${this.parentalConfirmations[name].date}</div></div></div>`;
+                box.innerHTML = `<div class="flex items-center justify-center gap-4 text-primary"><span class="material-symbols-outlined text-3xl">verified</span> <div><div class="text-xs uppercase tracking-widest opacity-60">Plan durch Eltern gesperrt</div><div class="text-xl">Bestätigt durch ${this.parentalConfirmations[name].parent}</div><div class="text-[10px] opacity-50">${this.parentalConfirmations[name].date}</div></div></div>`;
             } else {
                 form.classList.remove('hidden');
                 desc.classList.remove('hidden');
                 box.classList.add('hidden');
+                if (confirmBtn) confirmBtn.disabled = false;
             }
         },
 
@@ -679,11 +692,15 @@
                             </div>
                         </td>
                         <td class="py-6 px-4 text-center">
-                            ${conf ? `<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold">Gesehen (${conf.date})</span>` : '<span class="opacity-30 text-[10px] font-bold uppercase">Offen</span>'}
+                            ${conf ? `
+                                <div class="flex flex-col items-center gap-1">
+                                    <span class="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">Gesperrt</span>
+                                    <button onclick="app.unlockStudent('${name}')" class="text-[9px] text-error font-bold uppercase hover:underline">Entsperren</button>
+                                </div>
+                            ` : '<span class="opacity-30 text-[10px] font-bold uppercase">Offen</span>'}
                         </td>
                         <td class="py-6 px-4 text-right">
                             <div class="flex justify-end gap-2">
-                                <button onclick="app.unlockStudent('${name}')" class="text-outline-variant hover:text-error transition-all"><span class="material-symbols-outlined text-lg">lock_open</span></button>
                                 <button onclick="app.removeStudent('${name}')" class="text-outline-variant hover:text-error transition-all"><span class="material-symbols-outlined text-lg">person_remove</span></button>
                             </div>
                         </td>
@@ -745,7 +762,11 @@
         },
 
         async unlockStudent(name) {
-            if (confirm(`${name} entsperren?`)) await updateDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), { [name]: deleteField() });
+            // Parental Confirmation Lock: Unlock/Reset button for teacher
+            if (confirm(`${name} entsperren? Die Elternbestätigung wird gelöscht.`)) {
+                const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
+                await updateDoc(confRef, { [name]: deleteField() });
+            }
         },
 
         async unlockAll() {
@@ -778,28 +799,18 @@
             reader.onload = async (e) => {
                 try {
                     const res = await mammoth.extractRawText({ arrayBuffer: e.target.result });
-                    // Logic to consolidate Vorname, Name, Klasse into a single line per student
-                    // We look for patterns where entries might be spread across lines
                     const lines = res.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     const processedNames = [];
-                    
-                    // Basic heuristic: if the document contains list-like structures with small fragments, 
-                    // we try to group them by looking for a "Klasse" pattern (e.g. 2A, B4B) at the end.
-                    // If the text looks like one item per line already, we just take it.
-                    // Here we apply a generic "clean up" that joins fragments into blocks of 3.
                     
                     let tempEntry = [];
                     lines.forEach(line => {
                         tempEntry.push(line);
-                        // If it looks like we have 3 parts (Vorname, Name, Klasse) or the line is already a full string
-                        // We check if the last element looks like a class (contains a digit or is short)
                         if (tempEntry.length >= 3) {
                             processedNames.push(tempEntry.join(' '));
                             tempEntry = [];
                         }
                     });
                     
-                    // Fallback: If heuristic failed, just use original lines cleaned up
                     if (processedNames.length === 0) {
                         lines.forEach(l => processedNames.push(l));
                     }
