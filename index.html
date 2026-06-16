@@ -216,7 +216,7 @@
 <h3 class="text-2xl font-black mb-6 flex items-center gap-3 tracking-tight">
 <span class="material-symbols-outlined text-primary text-3xl">group</span> Klassenliste verwalten
                 </h3>
-<textarea class="w-full bg-surface-container-low border-2 border-surface-container-high rounded-lg p-6 min-h-[180px] mb-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-medium" id="class-input" placeholder="Ein Name pro Zeile..."></textarea>
+<textarea class="w-full bg-surface-container-low border-2 border-surface-container-high rounded-lg p-6 min-h-[180px] mb-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-medium text-sm" id="class-input" placeholder="Ein Name pro Zeile (Vorname Nachname Klasse)..."></textarea>
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 <button class="bg-primary text-on-primary font-black py-4 rounded-full hover:shadow-xl transition-all" onclick="app.updateClassList()">Speichern</button>
 <input accept=".docx" class="hidden" id="docx-import" onchange="app.handleDocxImport(event)" type="file"/>
@@ -458,8 +458,10 @@
                 <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container rounded-full text-[10px] font-black uppercase tracking-wider">
                     <span class="w-3 h-3 rounded-full" style="background-color: ${s.color}"></span> ${s.name}
                 </div>`).join('');
-            document.getElementById('subject-legend-student').innerHTML = html;
-            document.getElementById('subject-legend-teacher').innerHTML = html;
+            const ls = document.getElementById('subject-legend-student');
+            const lt = document.getElementById('subject-legend-teacher');
+            if (ls) ls.innerHTML = html;
+            if (lt) lt.innerHTML = html;
         },
 
         setRole(role) {
@@ -554,6 +556,10 @@
             else if (this.currentRole === 'teacher') {
                 document.getElementById('teacher-dashboard').classList.remove('hidden');
                 this.renderTeacherDashboard();
+                const classInput = document.getElementById('class-input');
+                if (classInput && !classInput.value) {
+                    classInput.value = this.students.join('\n');
+                }
             }
         },
 
@@ -622,7 +628,7 @@
                                 </div>
                             </div>
                             <div class="text-[11px] font-black text-primary uppercase tracking-widest bg-surface-container-low px-4 py-2 rounded-full border border-surface-container shadow-sm">
-                                Bis ${t.deadline ? t.deadline.split('-').reverse().join('.') : '-'}
+                                Bis ${t.date ? t.date.split('-').reverse().join('.') : '-'}
                             </div>
                         </div>
                     `;
@@ -659,7 +665,7 @@
                 const conf = this.parentalConfirmations[name];
                 return `
                     <tr>
-                        <td class="py-6 px-4 font-black hover:text-primary cursor-pointer transition-all" onclick="app.selectStudent('${name}')">${name}</td>
+                        <td class="py-6 px-4 font-black hover:text-primary cursor-pointer transition-all truncate max-w-[200px]" title="${name}" onclick="app.selectStudent('${name}')">${name}</td>
                         <td class="py-6 px-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-24 bg-surface-container h-2 rounded-full overflow-hidden"><div class="bg-primary h-full" style="width: ${pct}%"></div></div>
@@ -730,7 +736,10 @@
         },
 
         async updateClassList() {
-            const names = document.getElementById('class-input').value.split('\n').map(n => n.trim()).filter(n => n.length > 1);
+            const raw = document.getElementById('class-input').value;
+            const names = raw.split('\n')
+                .map(n => n.trim())
+                .filter(n => n.length > 1);
             await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: [...new Set(names)].sort() });
             alert("Gespeichert.");
         },
@@ -767,9 +776,39 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const res = await mammoth.extractRawText({ arrayBuffer: e.target.result });
-                const names = res.value.split('\n').map(n => n.trim()).filter(n => n.length > 1);
-                document.getElementById('class-input').value = names.join('\n');
+                try {
+                    const res = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+                    // Logic to consolidate Vorname, Name, Klasse into a single line per student
+                    // We look for patterns where entries might be spread across lines
+                    const lines = res.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    const processedNames = [];
+                    
+                    // Basic heuristic: if the document contains list-like structures with small fragments, 
+                    // we try to group them by looking for a "Klasse" pattern (e.g. 2A, B4B) at the end.
+                    // If the text looks like one item per line already, we just take it.
+                    // Here we apply a generic "clean up" that joins fragments into blocks of 3.
+                    
+                    let tempEntry = [];
+                    lines.forEach(line => {
+                        tempEntry.push(line);
+                        // If it looks like we have 3 parts (Vorname, Name, Klasse) or the line is already a full string
+                        // We check if the last element looks like a class (contains a digit or is short)
+                        if (tempEntry.length >= 3) {
+                            processedNames.push(tempEntry.join(' '));
+                            tempEntry = [];
+                        }
+                    });
+                    
+                    // Fallback: If heuristic failed, just use original lines cleaned up
+                    if (processedNames.length === 0) {
+                        lines.forEach(l => processedNames.push(l));
+                    }
+
+                    document.getElementById('class-input').value = processedNames.join('\n');
+                } catch (err) {
+                    console.error("Docx Error:", err);
+                    alert("Fehler beim Lesen der Datei.");
+                }
             };
             reader.readAsArrayBuffer(file);
         },
@@ -803,10 +842,10 @@
             this.students.forEach(name => {
                 const div = document.createElement('div');
                 div.className = "flex flex-col items-center p-10 border-4 border-slate-100 rounded-lg text-center break-inside-avoid relative overflow-hidden bg-white";
-                const cleanId = `qr-${name.replace(/\s+/g, '')}`;
+                const cleanId = `qr-${name.replace(/\W/g, '')}`;
                 div.innerHTML = `
                     <div class="absolute top-0 right-0 p-4"><span class="px-3 py-1 bg-amber-400 text-amber-950 text-[10px] font-black uppercase rounded-lg">Test-Labor</span></div>
-                    <div class="flex items-center gap-3 mb-6"><h3 class="font-black text-3xl text-slate-800 tracking-tight">${name}</h3></div>
+                    <div class="flex items-center gap-3 mb-6"><h3 class="font-black text-xl text-slate-800 tracking-tight leading-tight">${name}</h3></div>
                     <div id="${cleanId}" class="mb-6 bg-white p-4 shadow-sm border border-slate-50 rounded-lg"></div>
                     <p class="text-[14px] font-black text-primary uppercase tracking-widest">Eltern-Login</p>
                     <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Scan zum Bestätigen</p>
