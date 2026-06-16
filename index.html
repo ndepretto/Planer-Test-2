@@ -6,10 +6,8 @@
 <title>Döltschi | Test-Labor</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .checkmark-active { font-variation-settings: 'FILL' 1; color: #0058bc; }
         [v-cloak] { display: none; }
         .worksheet-pattern {
             background-color: #f8fafc;
@@ -61,7 +59,6 @@
     </script>
 </head>
 <body class="bg-background text-on-surface worksheet-pattern min-h-screen selection:bg-blue-100 flex flex-col font-body">
-<!-- Top App Bar -->
 <header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant sticky top-0 z-50 no-print">
 <div class="flex justify-between items-center w-full px-gutter max-w-[1000px] mx-auto h-16">
 <div class="flex items-center gap-3">
@@ -105,7 +102,6 @@
 <h2 class="text-5xl font-black text-slate-900 tracking-tight">Willkommen im Test-Labor</h2>
 <p class="text-slate-500 font-medium text-lg max-w-lg">Geben Sie den Namen Ihrer Klasse ein, um auf den digitalen Aufgabenplaner zuzugreifen.</p>
 </div>
-<!-- Class Entry Section -->
 <div class="w-full max-w-md mx-auto mb-12 space-y-6" id="class-entry-section">
 <div class="bg-white p-8 rounded-[40px] border border-slate-200 shadow-xl space-y-4">
 <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 px-2">Klasse wählen</h3>
@@ -115,7 +111,6 @@
 </div>
 </div>
 </div>
-<!-- Name Selection (Hidden initially) -->
 <div class="hidden w-full max-w-md mx-auto mb-20 space-y-6" id="student-selection-container">
 <div class="text-center mb-6">
 <h3 class="text-2xl font-black text-slate-900">Wer bist du?</h3>
@@ -132,7 +127,7 @@
 <button class="w-full text-xs font-bold text-slate-400 uppercase hover:text-primary transition-colors" onclick="app.showClassEntry()">Andere Klasse wählen</button>
 </div>
 </div>
-<!-- Student Personal View (Planer View) -->
+<!-- Student Personal View -->
 <div class="hidden space-y-12" id="student-tasks-view">
 <div class="flex flex-col md:flex-row justify-between items-center gap-6 no-print">
 <div class="flex items-center gap-4">
@@ -147,27 +142,26 @@
 </div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
-<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center step-card" id="step-1">
-<div class="w-8 h-8 rounded-full bg-blue-100 text-primary font-bold flex items-center justify-center mb-2">1</div>
+<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center" id="step-1">
+<div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center mb-2">1</div>
 <p class="text-[11px] font-bold uppercase text-slate-400">Name wählen</p>
 </div>
-<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center step-card" id="step-2">
+<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center" id="step-2">
 <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center mb-2">2</div>
 <p class="text-[11px] font-bold uppercase text-slate-400">Aufgaben prüfen</p>
 </div>
-<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center step-card" id="step-3">
+<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center" id="step-3">
 <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center mb-2">3</div>
 <p class="text-[11px] font-bold uppercase text-slate-400">Erledigen</p>
 </div>
-<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center step-card" id="step-4">
+<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center" id="step-4">
 <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center mb-2">4</div>
 <p class="text-[11px] font-bold uppercase text-slate-400">Eltern zeigen</p>
 </div>
 </div>
 <div class="space-y-4" id="task-list">
-<!-- Tasks populated here -->
+<!-- Tasks -->
 </div>
-<!-- Parents Confirmation Section -->
 <div class="hidden mt-12 bg-white border-2 border-dashed border-slate-300 p-10 rounded-[40px] flex flex-col items-center text-center shadow-md transition-all" id="parents-confirmation-card">
 <div class="w-16 h-16 bg-blue-50 text-primary rounded-full flex items-center justify-center mb-6">
 <span class="material-symbols-outlined text-4xl" id="confirmation-icon">verified_user</span>
@@ -189,10 +183,13 @@
 <!-- Teacher Dashboard View -->
 <div class="hidden space-y-8" id="teacher-dashboard">
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-<h2 class="text-3xl font-black text-slate-900">Lehrer Dashboard</h2>
+<h2 class="text-3xl font-black text-slate-900">Lehrer Dashboard <span class="text-primary" id="teacher-current-class"></span></h2>
 <div class="flex gap-2">
 <button class="px-4 py-2 border border-slate-200 bg-white rounded-lg text-xs font-bold uppercase text-slate-600 flex items-center gap-2 hover:bg-slate-50" onclick="window.print()">
 <span class="material-symbols-outlined text-[18px]">print</span> Drucken
+                </button>
+<button class="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase flex items-center gap-2" onclick="app.showClassEntry()">
+                    Klasse wechseln
                 </button>
 </div>
 </div>
@@ -243,7 +240,7 @@
 </select>
 </div>
 <div>
-<label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bis Datum (optional)</label>
+<label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bis Datum</label>
 <input class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary" id="new-task-date" placeholder="Z.B. Freitag" type="text"/>
 </div>
 <div class="md:col-span-2">
@@ -284,7 +281,7 @@
 <h3 class="text-xl font-bold text-slate-800">Klassenliste</h3>
 </div>
 <div class="bg-white border border-slate-200 rounded-[40px] p-6 shadow-sm space-y-4">
-<textarea class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-1 focus:ring-primary min-h-[150px]" id="class-input" placeholder="Neuer Name pro Zeile..."></textarea>
+<textarea class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:ring-1 focus:ring-primary min-h-[150px]" id="class-input" placeholder="Namen kopieren und einfügen oder neuer Name pro Zeile..."></textarea>
 <button class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm uppercase hover:bg-slate-900 transition-all" onclick="app.updateClassList()">Hinzufügen</button>
 <div class="border-t border-slate-100 pt-4">
 <p class="text-[10px] text-slate-400 mb-2 uppercase font-bold">Schüler verwalten</p>
@@ -309,21 +306,6 @@
 </div>
 </div>
 </footer>
-<!-- Print View -->
-<div class="hidden print-only bg-white p-10 min-h-screen text-black">
-<div class="flex justify-between items-end border-b-2 border-black pb-4 mb-8">
-<div>
-<h1 class="text-3xl font-bold">Döltschi Hausaufgaben</h1>
-<p class="text-lg" id="print-header-info">Hausaufgabenplaner (TEST LABOR)</p>
-</div>
-<p class="text-sm italic">Gedruckt am: <span id="print-date"></span></p>
-</div>
-<div class="space-y-4" id="print-content"></div>
-<div class="mt-20 border-t border-black pt-4 grid grid-cols-2 gap-8 text-center">
-<div class="h-12 border-b border-black">Unterschrift Schüler/in</div>
-<div class="h-12 border-b border-black">Unterschrift Eltern</div>
-</div>
-</div>
 <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -362,36 +344,48 @@
         selectedStudent: null,
         selectedTeacherFilter: 'all',
         currentClassName: localStorage.getItem('doeltschi_class') || null,
+        unsubConfig: null,
+        unsubConfirm: null,
+        unsubTasks: null,
 
         async init() {
-            const savedUser = localStorage.getItem('doeltschi_user');
+            this.updateDateDisplay();
+            if (this.currentClassName) {
+                this.setupClassListeners(this.currentClassName);
+            }
+            this.render();
+        },
 
-            onSnapshot(doc(db, "config", "classlist"), (docSnap) => {
+        setupClassListeners(className) {
+            if (this.unsubConfig) this.unsubConfig();
+            if (this.unsubConfirm) this.unsubConfirm();
+            if (this.unsubTasks) this.unsubTasks();
+
+            this.unsubConfig = onSnapshot(doc(db, "classes", className, "config", "classlist"), (docSnap) => {
                 if (docSnap.exists()) {
-                    this.students = docSnap.data().names || [];
-                    
-                    if (savedUser && this.students.includes(savedUser) && this.currentRole === 'student') {
-                        this.selectStudent(savedUser);
-                    }
+                    this.students = (docSnap.data().names || []).sort();
+                    this.render();
+                } else {
+                    this.students = [];
                     this.render();
                 }
             });
 
-            onSnapshot(doc(db, "config", "confirmations"), (docSnap) => {
+            this.unsubConfirm = onSnapshot(doc(db, "classes", className, "config", "confirmations"), (docSnap) => {
                 if (docSnap.exists()) {
                     this.parentalConfirmations = docSnap.data() || {};
                     this.render();
+                } else {
+                    this.parentalConfirmations = {};
+                    this.render();
                 }
             });
 
-            const tasksQuery = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
-            onSnapshot(tasksQuery, (snapshot) => {
+            const tasksQuery = query(collection(db, "classes", className, "tasks"), orderBy("createdAt", "desc"));
+            this.unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
                 this.tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 this.render();
             });
-
-            this.updateDateDisplay();
-            document.getElementById('print-date').textContent = new Date().toLocaleDateString('de-CH');
         },
 
         updateDateDisplay() {
@@ -415,6 +409,7 @@
             } else if (role === 'student') {
                 this.currentRole = 'student';
                 this.selectedStudent = null;
+                localStorage.removeItem('doeltschi_user');
             } else if (role === 'teacher') {
                 this.currentRole = 'teacher';
             }
@@ -441,12 +436,18 @@
             }
             this.currentClassName = name;
             localStorage.setItem('doeltschi_class', name);
+            this.setupClassListeners(name);
             this.render();
         },
 
         showClassEntry() {
             this.currentClassName = null;
             localStorage.removeItem('doeltschi_class');
+            this.students = [];
+            this.tasks = [];
+            if (this.unsubConfig) this.unsubConfig();
+            if (this.unsubConfirm) this.unsubConfirm();
+            if (this.unsubTasks) this.unsubTasks();
             this.render();
         },
 
@@ -473,20 +474,17 @@
             const navS = document.getElementById('nav-student');
             const navT = document.getElementById('nav-teacher');
             if(navS && navT) {
-                navS.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all " + 
-                    (this.currentRole.startsWith('student') ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-200");
-                navT.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all " + 
-                    (this.currentRole === 'teacher' || this.currentRole === 'login' ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-200");
+                const isActive = (id) => (this.currentRole.includes(id) ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-200");
+                navS.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all " + isActive('student');
+                navT.className = "px-4 py-1.5 rounded-full text-xs font-bold transition-all " + (this.currentRole === 'teacher' || this.currentRole === 'login' ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-200");
             }
 
             if (this.currentRole === 'login') {
                 document.getElementById('login-view').classList.remove('hidden');
             } else if (this.currentRole === 'student') {
                 document.getElementById('student-select-view').classList.remove('hidden');
-                
                 const entry = document.getElementById('class-entry-section');
                 const selector = document.getElementById('student-selection-container');
-                
                 if (this.currentClassName) {
                     entry.classList.add('hidden');
                     selector.classList.remove('hidden');
@@ -500,6 +498,10 @@
                 document.getElementById('student-tasks-view').classList.remove('hidden');
                 this.renderStudentTasks();
             } else if (this.currentRole === 'teacher') {
+                if (!this.currentClassName) {
+                    this.setRole('student');
+                    return;
+                }
                 document.getElementById('teacher-dashboard').classList.remove('hidden');
                 this.renderTeacherDashboard();
             }
@@ -511,7 +513,6 @@
             let optionsHtml = `<option value="" disabled selected>Wähle deinen Namen...</option>`;
             optionsHtml += this.students.map(name => `<option value="${name}">${name}</option>`).join('');
             dropdown.innerHTML = optionsHtml;
-            dropdown.value = ""; 
         },
 
         async setTaskStatus(taskId, statusValue) {
@@ -521,7 +522,7 @@
                 return;
             }
 
-            const taskRef = doc(db, "tasks", taskId);
+            const taskRef = doc(db, "classes", this.currentClassName, "tasks", taskId);
             if (statusValue === 'erledigt') {
                 await updateDoc(taskRef, { done: arrayUnion(this.selectedStudent) });
             } else {
@@ -538,7 +539,7 @@
             }
             if (this.parentalConfirmations[name]?.status === 'OK') return;
             if (confirm(`Bestätigen Sie als ${parentName} die Erledigung der Hausaufgaben? Dies sperrt die weitere Bearbeitung.`)) {
-                const confRef = doc(db, "config", "confirmations");
+                const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
                 const data = {
                     [name]: {
                         status: 'OK',
@@ -546,9 +547,7 @@
                         date: new Date().toLocaleString('de-CH')
                     }
                 };
-                await updateDoc(confRef, data).catch(async () => {
-                    await setDoc(confRef, data, { merge: true });
-                });
+                await setDoc(confRef, data, { merge: true });
             }
         },
 
@@ -630,7 +629,6 @@
             const update = (id, active) => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                el.classList.toggle('opacity-50', !active);
                 const circle = el.querySelector('div');
                 circle.className = active ? "w-8 h-8 rounded-full bg-blue-100 text-primary font-bold flex items-center justify-center mb-2" : "w-8 h-8 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center mb-2";
             };
@@ -641,6 +639,7 @@
         },
 
         renderTeacherDashboard() {
+            document.getElementById('teacher-current-class').textContent = `(${this.currentClassName})`;
             const select = document.getElementById('new-task-student');
             select.innerHTML = `<option value="all">Ganze Klasse</option>` + this.students.map(s => `<option value="${s}">${s}</option>`).join('');
 
@@ -721,35 +720,35 @@
             const subject = document.getElementById('new-task-subject').value;
             const deadline = document.getElementById('new-task-date').value;
             const task = document.getElementById('new-task-desc').value;
-            await addDoc(collection(db, "tasks"), { who, subject, task, deadline, done: [], createdAt: Date.now() });
+            await addDoc(collection(db, "classes", this.currentClassName, "tasks"), { who, subject, task, deadline, done: [], createdAt: Date.now() });
             document.getElementById('new-task-desc').value = "";
             document.getElementById('new-task-date').value = "";
         },
 
         async deleteTask(id) {
-            if (confirm("Aufgabe wirklich löschen?")) await deleteDoc(doc(db, "tasks", id));
+            if (confirm("Aufgabe wirklich löschen?")) await deleteDoc(doc(db, "classes", this.currentClassName, "tasks", id));
         },
 
         async updateClassList() {
             const input = document.getElementById('class-input').value;
             const newNames = input.split('\n').map(n => n.trim()).filter(n => n.length > 0);
             if (newNames.length === 0) return;
-            const updatedNames = [...new Set([...this.students, ...newNames])];
-            await setDoc(doc(db, "config", "classlist"), { names: updatedNames });
+            const updatedNames = [...new Set([...this.students, ...newNames])].sort();
+            await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: updatedNames });
             document.getElementById('class-input').value = "";
         },
 
         async removeStudentFromList(name) {
             if (confirm(`Möchtest du ${name} wirklich entfernen?`)) {
                 const updatedNames = this.students.filter(n => n !== name);
-                await setDoc(doc(db, "config", "classlist"), { names: updatedNames });
-                await updateDoc(doc(db, "config", "confirmations"), { [name]: deleteField() });
+                await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: updatedNames });
+                await updateDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), { [name]: deleteField() });
             }
         },
 
         async unlockStudent(name) {
             if (confirm(`Sperre für ${name} wirklich aufheben? Aufgaben werden wieder editierbar.`)) {
-                await updateDoc(doc(db, "config", "confirmations"), { [name]: deleteField() });
+                await updateDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), { [name]: deleteField() });
             }
         }
     };
