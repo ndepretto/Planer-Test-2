@@ -445,7 +445,6 @@
                 this.students = [];
                 this.tasks = [];
                 this.parentalConfirmations = {};
-                // We do NOT clear currentClassName here because it's usually set right before/after
             },
 
             setupClassListeners(className) {
@@ -453,9 +452,8 @@
                 if (this.unsubConfirm) this.unsubConfirm();
                 if (this.unsubTasks) this.unsubTasks();
 
-                // Explicitly targeting the document for the SPECIFIC class
                 this.unsubConfig = onSnapshot(doc(db, "classes", className, "config", "classlist"), (docSnap) => {
-                    if (this.currentClassName !== className) return; // Guard against late snapshots from previous classes
+                    if (this.currentClassName !== className) return;
                     this.students = docSnap.exists() ? (docSnap.data().names || []).sort() : [];
                     this.render();
                 });
@@ -496,6 +494,9 @@
             setRole(role) {
                 if (role === 'login') {
                     this.currentRole = 'login';
+                    // Reset login password if switching to login
+                    const loginPass = document.getElementById('login-password');
+                    if (loginPass) loginPass.value = '';
                 } else if (role === 'student') {
                     if (this.currentClassName) {
                         this.currentRole = this.selectedStudent ? 'student-tasks' : 'student';
@@ -522,6 +523,14 @@
                     localStorage.removeItem('lab_class');
                     localStorage.removeItem('lab_user');
                     this.clearLocalData();
+                    
+                    // Reset inputs when returning home
+                    const classInput = document.getElementById('class-name-input');
+                    if (classInput) classInput.value = '';
+                    
+                    const loginPass = document.getElementById('login-password');
+                    if (loginPass) loginPass.value = '';
+
                     this.currentRole = 'start';
                     this.render();
                 }
@@ -532,16 +541,13 @@
                 const name = input.value.trim().toUpperCase();
                 if (!name) return;
                 
-                // 1. Explicitly set the new class
                 this.currentClassName = name;
                 localStorage.setItem('lab_class', name);
                 
-                // 2. Reset local lists to prevent pollution from previous class
                 this.clearLocalData();
                 this.selectedStudent = null;
                 localStorage.removeItem('lab_user');
                 
-                // 3. Trigger cloud load for the SPECIFIC new class
                 this.setupClassListeners(name);
                 
                 this.currentRole = 'student';
@@ -552,6 +558,11 @@
                 this.currentClassName = null;
                 localStorage.removeItem('lab_class');
                 this.clearLocalData();
+                
+                // Clear the class name input when switching classes
+                const classInput = document.getElementById('class-name-input');
+                if (classInput) classInput.value = '';
+                
                 this.currentRole = 'start';
                 this.render();
             },
@@ -582,9 +593,14 @@
                 if(navS) navS.className = "px-6 py-2 rounded-full text-sm font-bold transition-all " + isActive('student');
                 if(navT) navT.className = "px-6 py-2 rounded-full text-sm font-bold transition-all " + (this.currentRole === 'teacher' || this.currentRole === 'login' ? "bg-white text-primary shadow-lg" : "text-white/80 hover:text-white");
 
-                if (this.currentRole === 'login') document.getElementById('login-view').classList.remove('hidden');
+                if (this.currentRole === 'login') {
+                    document.getElementById('login-view').classList.remove('hidden');
+                }
                 else if (this.currentRole === 'start') {
                     document.getElementById('start-view').classList.remove('hidden');
+                    // Ensure input is empty whenever start view is rendered
+                    const classInput = document.getElementById('class-name-input');
+                    if (classInput && !this.currentClassName) classInput.value = '';
                     this.generateStartQR();
                 }
                 else if (this.currentRole === 'student') {
