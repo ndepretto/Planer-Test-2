@@ -360,7 +360,7 @@
 </footer>
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, query, orderBy, deleteDoc, deleteField, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, query, orderBy, deleteDoc, deleteField, writeBatch, getDocs, FieldPath } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCeaYiA1v8aKz27LPlGoci3XIaD-2fWbIo",
@@ -635,23 +635,42 @@
                         const timeStr = now.toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'});
                         const fullDate = dateStr + " " + timeStr;
                         
-                        await setDoc(confRef, {
-                            [name]: {
-                                status: 'OK',
-                                confirmedBy: parentName,
-                                parent: parentName,
-                                date: fullDate,
-                                confirmedAt: dateStr,
-                                isLocked: true,
-                                parentalConfirmation: parentName,
-                                confirmationDate: fullDate
-                            }
-                        }, { merge: true });
+                        // Use FieldPath to handle names that might contain slashes or special characters
+                        await updateDoc(confRef, new FieldPath(name), {
+                            status: 'OK',
+                            confirmedBy: parentName,
+                            parent: parentName,
+                            date: fullDate,
+                            confirmedAt: dateStr,
+                            isLocked: true,
+                            parentalConfirmation: parentName,
+                            confirmationDate: fullDate
+                        });
                         
                         alert("Bestätigung erfolgreich gespeichert!");
                     } catch (error) {
                         console.error("Cloud Error:", error);
-                        alert("Fehler beim Speichern der Bestätigung.");
+                        // Fallback to setDoc if updateDoc fails (e.g. document doesn't exist yet)
+                        try {
+                            const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
+                            const now = new Date();
+                            const fullDate = now.toLocaleDateString('de-CH') + " " + now.toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'});
+                            await setDoc(confRef, {
+                                [name]: {
+                                    status: 'OK',
+                                    confirmedBy: parentName,
+                                    parent: parentName,
+                                    date: fullDate,
+                                    confirmedAt: now.toLocaleDateString('de-CH'),
+                                    isLocked: true,
+                                    parentalConfirmation: parentName,
+                                    confirmationDate: fullDate
+                                }
+                            }, { merge: true });
+                            alert("Bestätigung erfolgreich gespeichert (Fallback)!");
+                        } catch (innerError) {
+                            alert("Fehler beim Speichern der Bestätigung.");
+                        }
                     } finally {
                         btn.disabled = false;
                         btnText.textContent = "Bestätigen";
@@ -660,11 +679,6 @@
                 }
             },
 
-            /**
-             * Improved robust reset function for parental confirmations
-             * Fixed issue where deletes were failing by ensuring explicit field path removal
-             * and adding a retry logic.
-             */
             async resetParentalConfirm(studentId, retryCount = 0) {
                 if (retryCount === 0 && !confirm(`Möchten Sie die Elternbestätigung für ${studentId} wirklich zurücksetzen?`)) return;
 
@@ -674,11 +688,9 @@
                     
                     console.log(`Cloud-Action: Löschen der Bestätigung für ${studentId}...`);
                     
-                    // We use updateDoc with deleteField() for the key. 
-                    // This is more efficient than reading and rewriting the whole document.
-                    await updateDoc(confRef, { 
-                        [studentId]: deleteField() 
-                    });
+                    // CRITICAL FIX: Use new FieldPath() to wrap student names that may contain slashes or special characters
+                    // This prevents the "Paths must not contain..." error in Firestore updateDoc
+                    await updateDoc(confRef, new FieldPath(studentId), deleteField());
                     
                     console.log(`Cloud-Success: Bestätigung für ${studentId} erfolgreich gelöscht.`);
                 } catch (error) {
@@ -689,7 +701,7 @@
                         return this.resetParentalConfirm(studentId, retryCount + 1);
                     }
                     
-                    alert(`Fehler beim Löschen in der Cloud: ${error.message || 'Unbekannter Fehler'}. Bitte überprüfen Sie Ihre Internetverbindung oder Berechtigungen.`);
+                    alert(`Fehler beim Löschen in der Cloud: ${error.message || 'Unbekannter Fehler'}.`);
                 }
             },
 
@@ -802,7 +814,7 @@
                                             <span class="bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase">OK</span>
                                             <span class="text-[9px] font-bold text-on-surface-variant mt-1">${conf.confirmedAt || conf.date?.split(' ')[0] || ''}</span>
                                         </div>
-                                        <button onclick="app.resetParentalConfirm('${name}')" class="p-1.5 rounded-full hover:bg-error/10 text-error transition-all" title="Bestätigung zurücksetzen">
+                                        <button onclick="app.resetParentalConfirm(\`${name}\`)" class="p-1.5 rounded-full hover:bg-error/10 text-error transition-all" title="Bestätigung zurücksetzen">
                                             <span class="material-symbols-outlined text-[18px]">delete</span>
                                         </button>
                                     </div>
@@ -811,7 +823,7 @@
                             </td>
                             <td class="py-6 px-4 text-right">
                                 <div class="flex justify-end gap-2">
-                                    <button onclick="app.removeStudent('${name}')" class="text-outline-variant hover:text-error transition-all"><span class="material-symbols-outlined text-lg">person_remove</span></button>
+                                    <button onclick="app.removeStudent(\`${name}\`)" class="text-outline-variant hover:text-error transition-all"><span class="material-symbols-outlined text-lg">person_remove</span></button>
                                 </div>
                             </td>
                         </tr>`;
@@ -870,7 +882,6 @@
             async unlockAll() {
                 if (confirm("Alle Pläne entsperren?")) {
                     try {
-                        // Using setDoc with an empty object is the safest way to clear a configuration document's data fields
                         await setDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), {});
                         console.log("Batch Unlock Success");
                     } catch (e) {
@@ -884,6 +895,11 @@
                 if (confirm(`${name} entfernen?`)) {
                     const newNames = this.students.filter(n => n !== name);
                     await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: newNames });
+                    // Also try to cleanup confirmations if any
+                    try {
+                        const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
+                        await updateDoc(confRef, new FieldPath(name), deleteField());
+                    } catch(e) { /* ignore if not found */ }
                 }
             },
 
