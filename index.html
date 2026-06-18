@@ -225,6 +225,9 @@
 <button class="px-6 py-3 bg-on-surface text-white font-black rounded-full hover:shadow-lg transition-all flex items-center gap-2 text-sm shadow-sm" onclick="app.resetStudentSession()">
 <span class="material-symbols-outlined text-[18px]">no_accounts</span> Sitzungssperre aufheben
                     </button>
+<button class="px-6 py-3 bg-red-600 text-white font-black rounded-full hover:bg-red-700 hover:shadow-lg transition-all flex items-center gap-2 text-sm shadow-sm" onclick="app.deleteAllTasks()">
+<span class="material-symbols-outlined text-[18px]">delete</span> Alle Aufgaben löschen
+                    </button>
 <button class="px-6 py-3 bg-error text-on-error font-black rounded-full hover:bg-red-700 transition-all flex items-center gap-2 text-sm shadow-sm" onclick="app.deleteCurrentClass()">
 <span class="material-symbols-outlined text-[18px]">delete_forever</span> Klasse löschen
                     </button>
@@ -635,7 +638,6 @@
                         const timeStr = now.toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'});
                         const fullDate = dateStr + " " + timeStr;
                         
-                        // Use FieldPath to handle names that might contain slashes or special characters
                         await updateDoc(confRef, new FieldPath(name), {
                             status: 'OK',
                             confirmedBy: parentName,
@@ -650,7 +652,6 @@
                         alert("Bestätigung erfolgreich gespeichert!");
                     } catch (error) {
                         console.error("Cloud Error:", error);
-                        // Fallback to setDoc if updateDoc fails (e.g. document doesn't exist yet)
                         try {
                             const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
                             const now = new Date();
@@ -685,22 +686,10 @@
                 try {
                     const currentClass = this.currentClassName;
                     const confRef = doc(db, "classes", currentClass, "config", "confirmations");
-                    
-                    console.log(`Cloud-Action: Löschen der Bestätigung für ${studentId}...`);
-                    
-                    // CRITICAL FIX: Use new FieldPath() to wrap student names that may contain slashes or special characters
-                    // This prevents the "Paths must not contain..." error in Firestore updateDoc
                     await updateDoc(confRef, new FieldPath(studentId), deleteField());
-                    
-                    console.log(`Cloud-Success: Bestätigung für ${studentId} erfolgreich gelöscht.`);
                 } catch (error) {
                     console.error(`Firebase Cloud Error during reset (Attempt ${retryCount + 1}):`, error);
-                    
-                    if (retryCount < 2) {
-                        console.warn("Retrying operation...");
-                        return this.resetParentalConfirm(studentId, retryCount + 1);
-                    }
-                    
+                    if (retryCount < 2) return this.resetParentalConfirm(studentId, retryCount + 1);
                     alert(`Fehler beim Löschen in der Cloud: ${error.message || 'Unbekannter Fehler'}.`);
                 }
             },
@@ -872,6 +861,23 @@
                 if (confirm("Löschen?")) await deleteDoc(doc(db, "classes", this.currentClassName, "tasks", id));
             },
 
+            async deleteAllTasks() {
+                if (confirm("Möchten Sie wirklich ALLE Aufgaben für diese Klasse löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.")) {
+                    try {
+                        const batch = writeBatch(db);
+                        const tasksQuery = await getDocs(collection(db, "classes", this.currentClassName, "tasks"));
+                        tasksQuery.forEach((doc) => {
+                            batch.delete(doc.ref);
+                        });
+                        await batch.commit();
+                        alert("Alle Aufgaben wurden erfolgreich gelöscht.");
+                    } catch (error) {
+                        console.error("Fehler beim Löschen der Aufgaben:", error);
+                        alert("Es gab einen Fehler beim Löschen der Aufgaben.");
+                    }
+                }
+            },
+
             async updateClassList() {
                 const raw = document.getElementById('class-input').value;
                 const names = raw.split('\n').map(n => n.trim()).filter(n => n.length > 1);
@@ -895,11 +901,10 @@
                 if (confirm(`${name} entfernen?`)) {
                     const newNames = this.students.filter(n => n !== name);
                     await setDoc(doc(db, "classes", this.currentClassName, "config", "classlist"), { names: newNames });
-                    // Also try to cleanup confirmations if any
                     try {
                         const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
                         await updateDoc(confRef, new FieldPath(name), deleteField());
-                    } catch(e) { /* ignore if not found */ }
+                    } catch(e) { }
                 }
             },
 
