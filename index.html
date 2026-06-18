@@ -20,9 +20,12 @@
                         "background": "#f9f9fe",
                         "surface": "#ffffff",
                         "on-surface": "#1a1c1f",
+                        "outline": "#717786",
                         "outline-variant": "#c1c6d7",
                         "surface-container": "#ededf2",
                         "surface-container-low": "#f3f3f8",
+                        "surface-container-high": "#e8e8ed",
+                        "surface-container-highest": "#e2e2e7",
                         "on-surface-variant": "#414755",
                         "secondary": "#4c4aca",
                         "secondary-fixed": "#e2dfff",
@@ -254,25 +257,32 @@
                         </button>
 </div>
 </div>
-<!-- Task Assignment -->
+<!-- Task Assignment (Multi-Student Update) -->
 <div class="bg-white p-10 rounded-lg border border-surface-container shadow-xl">
 <h3 class="text-2xl font-black mb-6 flex items-center gap-3 tracking-tight">
 <span class="material-symbols-outlined text-secondary text-3xl">add_task</span> Neue Aufgabe
                     </h3>
 <form class="space-y-4" onsubmit="app.addTask(event)">
-<div class="grid grid-cols-2 gap-4">
-<div class="relative">
-<select class="w-full bg-surface-container-low border-2 border-surface-container rounded-full px-6 py-4 font-bold appearance-none outline-none focus:border-secondary transition-all" id="new-task-student"></select>
-<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
+<div class="space-y-3">
+<label class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest block mb-1 px-1">Schüler auswählen</label>
+<div class="flex gap-2 mb-2">
+<button class="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-surface-container text-primary rounded-full hover:bg-primary/10 transition-all border border-surface-container" onclick="app.selectAllStudents(true)" type="button">Alle wählen</button>
+<button class="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-surface-container text-outline rounded-full hover:bg-surface-container-high transition-all border border-surface-container" onclick="app.selectAllStudents(false)" type="button">Alle abwählen</button>
+</div>
+<div class="max-h-[160px] overflow-y-auto border-2 border-surface-container rounded-lg p-3 custom-scrollbar bg-surface-container-low" id="multi-student-list">
+<!-- Student Checkboxes will be rendered here -->
+</div>
 </div>
 <div class="relative">
 <select class="w-full bg-surface-container-low border-2 border-surface-container rounded-full px-6 py-4 font-bold appearance-none outline-none focus:border-secondary transition-all" id="new-task-subject"></select>
 <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">expand_more</span>
 </div>
-</div>
 <input class="w-full bg-surface-container-low border-2 border-surface-container rounded-full px-8 py-4 font-bold outline-none focus:border-secondary transition-all" id="new-task-desc" placeholder="Was ist zu tun?" required="" type="text"/>
 <input class="w-full bg-surface-container-low border-2 border-surface-container rounded-full px-8 py-4 font-bold outline-none focus:border-secondary transition-all" id="new-task-date" type="date"/>
-<button class="w-full bg-secondary text-white font-black py-4 rounded-full hover:shadow-xl active:scale-95 transition-all text-lg" type="submit">Hinzufügen</button>
+<button class="w-full bg-secondary text-white font-black py-4 rounded-full hover:shadow-xl active:scale-95 transition-all text-lg flex items-center justify-center gap-2" id="add-task-submit-btn" type="submit">
+<span>Hinzufügen</span>
+<span class="material-symbols-outlined animate-spin-custom hidden" id="task-loader">progress_activity</span>
+</button>
 </form>
 </div>
 </div>
@@ -769,8 +779,22 @@
 
             renderTeacherDashboard() {
                 document.getElementById('teacher-current-class').textContent = `(Klasse ${this.currentClassName})`;
-                const select = document.getElementById('new-task-student');
-                select.innerHTML = `<option value="all">Ganze Klasse</option>` + this.students.map(s => `<option value="${s}">${s}</option>`).join('');
+                
+                // Multi-Student checklist rendering
+                const multiList = document.getElementById('multi-student-list');
+                multiList.innerHTML = `
+                    <div class="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-all cursor-pointer group">
+                        <input type="checkbox" id="student-check-all" class="w-5 h-5 rounded border-surface-container text-secondary focus:ring-secondary/20 cursor-pointer">
+                        <label for="student-check-all" class="font-bold text-sm text-on-surface-variant cursor-pointer group-hover:text-secondary uppercase tracking-wider">Alle Schüler (Klasse)</label>
+                    </div>
+                    <div class="h-px bg-surface-container my-2"></div>
+                ` + this.students.map(s => `
+                    <div class="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-all cursor-pointer group">
+                        <input type="checkbox" name="assign-student" value="${s}" class="student-checkbox w-5 h-5 rounded border-surface-container text-secondary focus:ring-secondary/20 cursor-pointer">
+                        <span class="font-medium text-sm text-on-surface-variant group-hover:text-on-surface">${s}</span>
+                    </div>
+                `).join('');
+
                 const subSelect = document.getElementById('new-task-subject');
                 subSelect.innerHTML = Object.entries(SUBJECTS).map(([id, s]) => `<option value="${id}">${s.name}</option>`).join('');
 
@@ -835,6 +859,13 @@
                 }).join('');
             },
 
+            selectAllStudents(checked) {
+                const boxes = document.querySelectorAll('.student-checkbox');
+                boxes.forEach(box => box.checked = checked);
+                const allBox = document.getElementById('student-check-all');
+                if (allBox) allBox.checked = checked;
+            },
+
             toggleProgress() {
                 const container = document.getElementById('teacher-progress-container');
                 const icon = document.getElementById('toggle-progress-icon');
@@ -847,14 +878,57 @@
 
             async addTask(e) {
                 e.preventDefault();
-                const who = document.getElementById('new-task-student').value;
                 const subject = document.getElementById('new-task-subject').value;
                 const deadline = document.getElementById('new-task-date').value;
                 const task = document.getElementById('new-task-desc').value;
-                await addDoc(collection(db, "classes", this.currentClassName, "tasks"), { 
-                    who, subject, task, date: deadline, done: [], createdAt: Date.now() 
-                });
-                document.getElementById('new-task-desc').value = "";
+                const loader = document.getElementById('task-loader');
+                const submitBtn = document.getElementById('add-task-submit-btn');
+
+                // Get selected students
+                const isAllChecked = document.getElementById('student-check-all')?.checked;
+                let selectedStudents = [];
+                if (isAllChecked) {
+                    selectedStudents = ['all'];
+                } else {
+                    selectedStudents = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+                }
+
+                if (selectedStudents.length === 0) {
+                    alert("Bitte wählen Sie mindestens einen Schüler aus.");
+                    return;
+                }
+
+                loader.classList.remove('hidden');
+                submitBtn.disabled = true;
+
+                try {
+                    const batch = writeBatch(db);
+                    const taskCol = collection(db, "classes", this.currentClassName, "tasks");
+
+                    for (const who of selectedStudents) {
+                        const newTaskRef = doc(taskCol);
+                        batch.set(newTaskRef, {
+                            who,
+                            subject,
+                            task,
+                            date: deadline,
+                            done: [],
+                            createdAt: Date.now()
+                        });
+                    }
+
+                    await batch.commit();
+                    
+                    document.getElementById('new-task-desc').value = "";
+                    this.selectAllStudents(false);
+                    alert("Aufgabe(n) erfolgreich hinzugefügt!");
+                } catch (error) {
+                    console.error("Cloud Error:", error);
+                    alert("Fehler beim Speichern der Aufgaben.");
+                } finally {
+                    loader.classList.add('hidden');
+                    submitBtn.disabled = false;
+                }
             },
 
             async deleteTask(id) {
@@ -993,5 +1067,12 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => window.app.init());
+        
+        // Listener for the "All" checkbox in the multi-select
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'student-check-all') {
+                window.app.selectAllStudents(e.target.checked);
+            }
+        });
     </script>
 </body></html>
