@@ -624,16 +624,20 @@
         async resetParentalConfirm(studentId) {
             if (confirm(`Möchten Sie die Elternbestätigung für ${studentId} wirklich zurücksetzen?`)) {
                 try {
-                    const confRef = doc(db, "classes", this.currentClassName, "config", "confirmations");
-                    // Correcting the path logic to use deleteField on the specific student's key in the document
+                    const currentClass = this.currentClassName;
+                    const confRef = doc(db, "classes", currentClass, "config", "confirmations");
+                    
+                    // Since confirmations are stored as fields within a single 'confirmations' document,
+                    // we use updateDoc with deleteField() for the specific student key.
                     await updateDoc(confRef, {
                         [studentId]: deleteField()
                     });
-                    // The onSnapshot listeners (setupClassListeners) will trigger an automatic UI refresh 
-                    // upon the change in the confirmations document.
+                    
+                    // The onSnapshot listener in setupClassListeners will automatically trigger a re-render
+                    console.log(`Confirmation for ${studentId} successfully reset in Firestore.`);
                 } catch (error) {
                     console.error("Fehler beim Zurücksetzen der Bestätigung:", error);
-                    alert("Fehler beim Zurücksetzen im Cloud-Speicher.");
+                    alert("Konnte die Bestätigung nicht im Cloud-Speicher zurücksetzen. Bitte Berechtigungen prüfen.");
                 }
             }
         },
@@ -806,7 +810,12 @@
 
         async unlockAll() {
             if (confirm("Alle Pläne entsperren?")) {
-                await setDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), {});
+                try {
+                    await setDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), {});
+                } catch (e) {
+                    console.error(e);
+                    alert("Entsperren fehlgeschlagen.");
+                }
             }
         },
 
