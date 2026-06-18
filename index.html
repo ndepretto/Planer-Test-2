@@ -627,17 +627,23 @@
                     const currentClass = this.currentClassName;
                     const confRef = doc(db, "classes", currentClass, "config", "confirmations");
                     
-                    // Since confirmations are stored as fields within a single 'confirmations' document,
-                    // we use updateDoc with deleteField() for the specific student key.
+                    // Optimiertes Löschen mittels deleteField() für korrekte Firebase-Operation
                     await updateDoc(confRef, {
                         [studentId]: deleteField()
                     });
                     
-                    // The onSnapshot listener in setupClassListeners will automatically trigger a re-render
-                    console.log(`Confirmation for ${studentId} successfully reset in Firestore.`);
+                    // Lokales Status-Feedback vor dem nächsten Snapshot-Trigger
+                    delete this.parentalConfirmations[studentId];
+                    this.render(); 
+                    
+                    console.log(`Cloud-Success: Bestätigung für ${studentId} erfolgreich gelöscht.`);
                 } catch (error) {
-                    console.error("Fehler beim Zurücksetzen der Bestätigung:", error);
-                    alert("Konnte die Bestätigung nicht im Cloud-Speicher zurücksetzen. Bitte Berechtigungen prüfen.");
+                    console.error("Firebase Cloud Error beim Löschen der Bestätigung:", error);
+                    let errorMsg = "Fehler beim Löschen in der Cloud.";
+                    if (error.code === 'permission-denied') {
+                        errorMsg = "Berechtigung verweigert: Sie haben keine Schreibrechte für diesen Cloud-Bereich.";
+                    }
+                    alert(`${errorMsg}\n\nDetails: ${error.message}`);
                 }
             }
         },
@@ -813,8 +819,8 @@
                 try {
                     await setDoc(doc(db, "classes", this.currentClassName, "config", "confirmations"), {});
                 } catch (e) {
-                    console.error(e);
-                    alert("Entsperren fehlgeschlagen.");
+                    console.error("Cloud-Entsperr-Fehler:", e);
+                    alert("Entsperren in der Cloud fehlgeschlagen. Bitte Internetverbindung und Berechtigungen prüfen.");
                 }
             }
         },
